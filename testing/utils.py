@@ -8,7 +8,7 @@ from keras.utils.data_utils import get_file
 from keras.engine.topology import get_source_inputs
 from keras.engine import InputSpec
 from keras.applications import imagenet_utils
-from keras.applications.imagenet_utils import decode_predictions, _obtain_input_shape
+from keras_applications.imagenet_utils import decode_predictions, _obtain_input_shape
 from keras.callbacks import TensorBoard, EarlyStopping, ModelCheckpoint
 import keras
 

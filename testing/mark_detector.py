@@ -22,7 +22,8 @@ class MarkDetector:
         self.face_detector = FaceDetector()
         self.marks = None
 
-        if mark_model.split(".")[1] == "pb":
+        if mark_model.split(".")[-1] == "pb":
+            print("Load tensorflow model " + mark_model)
             # Get a TensorFlow session ready to do landmark detection
             # Load a (frozen) Tensorflow model into memory.
             self.cnn_input_size = 64
@@ -47,13 +48,17 @@ class MarkDetector:
 
     def detect_marks_tensor(self, image_np):
         """Detect marks from image"""
+
+        writer = tf.summary.FileWriter("output", self.graph)
+        writer.close()
+
         # Get result tensor by its name.
-        logits_tensor = self.graph.get_tensor_by_name('Identity:output_node_0')
+        logits_tensor = self.graph.get_tensor_by_name('k2tfout_0:0')
 
         # Actual detection.
         predictions = self.sess.run(
             logits_tensor,
-            feed_dict={'input_2': image_np})
+            feed_dict={'input_2:0': image_np})
             
         # Convert predictions to landmarks
         marks = np.array(predictions).flatten()
@@ -70,6 +75,12 @@ class MarkDetector:
         marks = np.reshape(marks, (-1, 2))
 
         return marks
+
+    def detect_marks(self, image_np):
+        if hasattr(self, 'graph'):
+            return self.detect_marks_tensor(image_np)
+        else:
+            return self.detect_marks_keras(image_np)
 
     @staticmethod
     def draw_box(image, boxes, box_color=(255, 255, 255)):

@@ -1,7 +1,7 @@
 from multiprocessing import Process, Queue
 import numpy as np
 import cv2
-from mark_detector import MarkDetector
+from mark_detector import MarkDetector, current_model
 import time
 import sys
 sys.path.append("../")
@@ -11,7 +11,7 @@ CNN_INPUT_SIZE = 64
 
 
 # Video File Path
-VIDEO_PATH = "samples/IU.avi"
+VIDEO_PATH = "vid.mp4"
 
 def get_face(detector, img_queue, box_queue):
     """Get face from image queue. This function is used for multiprocessing"""
@@ -20,13 +20,14 @@ def get_face(detector, img_queue, box_queue):
         box = detector.extract_cnn_facebox(image)
         box_queue.put(box)
 
-def single_main():
+def single_main(mark_model):
     """MAIN"""
     cam = cv2.VideoCapture(VIDEO_PATH)
     _, sample_frame = cam.read()
     
+    # "../mobile_converter/output_graph.pb" or "landmark_model/Mobilenet_v1.hdf5"
     # Load Landmark detector
-    mark_detector = MarkDetector()
+    mark_detector = MarkDetector(mark_model)
     
     # Setup process and queues for multiprocessing
     img_queue = Queue()
@@ -55,7 +56,7 @@ def single_main():
                 face_img = cv2.resize(face_img, (CNN_INPUT_SIZE, CNN_INPUT_SIZE))
                 face_img = cv2.cvtColor(face_img, cv2.COLOR_BGR2GRAY)
                 face_img0 = face_img.reshape(1, CNN_INPUT_SIZE, CNN_INPUT_SIZE, 1)
-                marks = mark_detector.detect_marks_keras(face_img0) # landmark predictor
+                marks = mark_detector.detect_marks(face_img0) # landmark predictor
                 marks *= facebox[2] - facebox[0]
                 marks[:, 0] += facebox[0]
                 marks[:, 1] += facebox[1]
@@ -79,4 +80,4 @@ def single_main():
     cv2.destroyAllWindows()
 
 if __name__ == "__main__":
-    single_main()
+    single_main(len(sys.argv) > 1 and sys.argv[1] or current_model)

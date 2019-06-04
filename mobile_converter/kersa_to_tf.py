@@ -6,6 +6,12 @@ import tensorflow as tf
 
 from keras.models import load_model
 from keras import backend as K
+from keras.utils import custom_object_scope
+from keras.applications import mobilenet
+
+import sys
+sys.path.append("../testing/")
+from utils import relu6, smoothL1
 
 def convertGraph(modelPath, outdir, numoutputs, prefix, name):
     '''
@@ -26,7 +32,8 @@ def convertGraph(modelPath, outdir, numoutputs, prefix, name):
 
     K.set_learning_phase(0)
 
-    net_model = load_model(modelPath)
+    with custom_object_scope({'smoothL1': smoothL1, 'relu6': relu6}): #, 'DepthwiseConv2D': mobilenet.DepthwiseConv2D
+        net_model = load_model(modelPath)
 
     # Alias the outputs in the model - this sometimes makes them easier to access in TF
     pred = [None] * numoutputs
