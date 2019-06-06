@@ -1,7 +1,7 @@
 import numpy as np
 import tensorflow as tf
-from keras.models import load_model
-from keras.utils.generic_utils import custom_object_scope
+from tensorflow.keras.models import load_model
+from tensorflow.keras.utils import custom_object_scope
 
 from utils import smoothL1, relu6, DepthwiseConv2D, mask_weights
 import cv2
@@ -22,11 +22,14 @@ class MarkDetector:
         self.face_detector = FaceDetector()
         self.marks = None
 
-        if mark_model.split(".")[-1] == "pb":
+        self.cnn_input_size = 64
+        ext = mark_model.split(".")[-1]
+        if ext == "pb":
             print("Load tensorflow model " + mark_model)
+
+            self.type = "tensorflow"
             # Get a TensorFlow session ready to do landmark detection
             # Load a (frozen) Tensorflow model into memory.
-            self.cnn_input_size = 64
             detection_graph = tf.Graph()
             with detection_graph.as_default():
                 od_graph_def = tf.GraphDef()
@@ -38,19 +41,20 @@ class MarkDetector:
 
             self.graph = detection_graph
             self.sess = tf.Session(graph=detection_graph)
-            
-        
+        elif ext == "tflite":
+            print("Load tflite model " + mark_model)
+
+            self.type = "tflite"
+            self.interpreter = tf.lite.Interpreter(model_path=mark_model)
+            self.interpreter.allocate_tensors()
         else:
-            self.cnn_input_size = 64
-            # with CustomObjectScope({'tf': tf}):
+            print("Load keras model " + mark_model)
+            self.type = "keras"
             with custom_object_scope({'smoothL1': smoothL1, 'relu6': relu6, 'DepthwiseConv2D': DepthwiseConv2D, 'mask_weights': mask_weights, 'tf': tf}):
                 self.sess = load_model(mark_model)
 
     def detect_marks_tensor(self, image_np):
         """Detect marks from image"""
-
-        writer = tf.summary.FileWriter("output", self.graph)
-        writer.close()
 
         # Get result tensor by its name.
         logits_tensor = self.graph.get_tensor_by_name('k2tfout_0:0')
@@ -61,6 +65,21 @@ class MarkDetector:
             feed_dict={'input_2:0': image_np})
             
         # Convert predictions to landmarks
+        marks = np.array(predictions).flatten()
+        marks = np.reshape(marks, (-1, 2))
+
+        return marks
+
+    def detect_marks_tflite(self, image_np):
+        input_details = self.interpreter.get_input_details()
+        output_details = self.interpreter.get_output_details()
+
+        image = np.asarray(image_np, dtype=np.float32)
+        print(image)
+        self.interpreter.set_tensor(input_details[0]['index'], image)
+        self.interpreter.invoke()
+
+        predictions = self.interpreter.get_tensor(output_details[0]['index'])
         marks = np.array(predictions).flatten()
         marks = np.reshape(marks, (-1, 2))
 
@@ -77,8 +96,10 @@ class MarkDetector:
         return marks
 
     def detect_marks(self, image_np):
-        if hasattr(self, 'graph'):
+        if self.type == "tensorflow":
             return self.detect_marks_tensor(image_np)
+        elif self.type == "tflite":
+            return self.detect_marks_tflite(image_np)
         else:
             return self.detect_marks_keras(image_np)
 
