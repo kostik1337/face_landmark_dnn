@@ -3,21 +3,21 @@ import numpy as np
 import cv2
 import imutils
 from imutils.video import VideoStream 
-from mark_detector import MarkDetector
+from mark_detector import MarkDetector, current_model
 import time
 
 from kalman_filter import Stabilizer
 from optical_flow_tracker import Tracker
-import dlib
+import sys
 
 CNN_INPUT_SIZE = 64
 
-def webcam_main():
+def webcam_main(mark_model):
     print("Camera sensor warming up...")
     vs = cv2.VideoCapture(0)
     time.sleep(2.0)
 
-    mark_detector = MarkDetector()
+    mark_detector = MarkDetector(mark_model)
     
     # loop over the frames from the video stream
     while True:
@@ -39,7 +39,7 @@ def webcam_main():
                 face_img0 = face_img.reshape(1, CNN_INPUT_SIZE, CNN_INPUT_SIZE, 1)
 
                 land_start_time = time.time()
-                marks = mark_detector.detect_marks_keras(face_img0)
+                marks = mark_detector.detect_marks(face_img0)
                 # marks *= 255
                 marks *= facebox[2] - facebox[0]
                 marks[:, 0] += facebox[0]
@@ -63,4 +63,4 @@ def webcam_main():
     vs.stop()
 
 if __name__ == "__main__":
-    webcam_main()
+    webcam_main(len(sys.argv) > 1 and sys.argv[1] or current_model)

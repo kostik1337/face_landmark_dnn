@@ -75,7 +75,6 @@ class MarkDetector:
         output_details = self.interpreter.get_output_details()
 
         image = np.asarray(image_np, dtype=np.float32)
-        print(image)
         self.interpreter.set_tensor(input_details[0]['index'], image)
         self.interpreter.invoke()
 

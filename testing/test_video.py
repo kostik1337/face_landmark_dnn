@@ -63,6 +63,7 @@ def single_main(mark_model):
                 
                 # Draw Predicted Landmarks
                 mark_detector.draw_marks(frame, marks, color=(255, 255, 255))
+            mark_detector.draw_box(frame,faceboxes)
                 
         fps_time = (cv2.getTickCount() - start)/cv2.getTickFrequency()
         cv2.putText(frame, '%.1ffps'%(1/fps_time) , (frame.shape[1]-65,15), cv2.FONT_HERSHEY_DUPLEX, 0.5, (127,127,127))
